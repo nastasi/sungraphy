@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+import sys
+import os
+import pytz
 from pylab import *
 from sunposition.sunposition import sunpos
 from datetime import datetime
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import colorsys
-import os
 
 year_cur = 2020
 elev_cur = 84
@@ -12,12 +14,12 @@ elev_cur = 84
 # from 4 to 21 (18 hours)
 # 52 weeks
 hours = 18
-hour_start = 3
+hour_start = 5
 weeks = 52
 week_start = 0
 
-h_hour = 66
-w_week = 30
+w_hour = 66
+h_week = 30
 
 thick = 1
 
@@ -37,18 +39,25 @@ def hsv2rgb(h, s, v):
 
 # wall_norm: angle from north
 def sungraphy(filename, wall_norm):
-    img = Image. new('RGB', ((w_week + thick) * weeks + thick,
-                             (h_hour + thick) * hours + thick),
-                     color = (0, 0, 0))
+    img = Image.new('RGB', ((w_hour + thick) * (hours + 1) + thick,
+                            (h_week + thick) * (weeks + 1) + thick),
+                    color = (0, 0, 0))
     d = ImageDraw.Draw(img)
+    font = ImageFont.truetype("arial.ttf", 15)
     # d. text((10,10), "Hello World", fill=(255,255,0))
+
     for week in range(0, weeks):
         for hour in range(0, hours):
 
             date_in = "%s-%d %02d:00:00" % (year_cur, 1 + (week * 7),
                                             hour + hour_start)
 
-            dt = datetime.strptime(date_in, '%Y-%j %H:%M:%S')
+            dt_in = datetime.strptime(date_in, '%Y-%j %H:%M:%S')
+            local_tz = pytz.timezone('CET')
+            dt_loc = local_tz.localize(dt_in)
+            target_tz = pytz.timezone('UTC')
+            dt = target_tz.normalize(dt_loc)
+
 
             az, zen, ra, dec = sunpos(dt, lat, lon, elev_cur)[:4] #discard RA, dec, H
 
@@ -60,28 +69,34 @@ def sungraphy(filename, wall_norm):
             if (zen > 90.0 or
                 wall_angle < -90.0 or
                 wall_angle > 90.0):
-                d.rectangle([(w_week + thick) * week + thick,
-                             (thick + h_hour) * hour + thick,
-                             (w_week + thick) * (week + 1) - thick,
-                             (thick + h_hour) * (hour + 1) - thick],
-                            fill = (30, 30, 30))
+                d.rectangle([(thick + w_hour) * (hour + 1) + thick,
+                             (h_week + thick) * (week + 1) + thick,
+                             (thick + w_hour) * (hour + 2) - thick,
+                             (h_week + thick) * (week + 2) - thick],
+                            fill = (50, 50, 50))
                 continue
 
             # print (hour + hour_start, week, wall_angle, zen)
-            d.rectangle([(w_week + thick) * week + thick,
-                         (thick + h_hour) * hour + thick,
-                         (w_week + thick) * (week + 1) - thick,
-                         (thick + h_hour) * (hour + 1) - thick],
-                        fill = (30, 30, 30))
-            d.rectangle([(w_week + thick) * week + thick,
-                         (thick + h_hour) * hour + int(float(h_hour) * zen / 180.0) + thick,
-    #                     (thick + h_hour) * hour + thick,
-                         (w_week + thick) * (week + 1) - thick,
-                         (thick + h_hour) * (hour + 1)  - int(float(h_hour) * zen / 180.0) - thick],
-    #                     (thick + h_hour) * (hour + 1) - thick],
+            d.rectangle([(thick + w_hour) * (hour + 1) + thick,
+                         (h_week + thick) * (week + 1) + thick,
+                         (thick + w_hour) * (hour + 2) - thick,
+                         (h_week + thick) * (week + 2) - thick],
+                        fill = (50, 50, 50))
+            d.rectangle([(thick + w_hour) * (hour + 1) + int(float(w_hour) * zen / 180.0) + thick,
+                         (h_week + thick) * (week + 1) + thick,
+                         (thick + w_hour) * (hour + 2)  - int(float(w_hour) * zen / 180.0) - thick,
+                         (h_week + thick) * (week + 2) - thick],
                         fill = hsv2rgb((1.0 / 180.0) * (wall_angle + 90.0), 1, 1))
-            #           fill = hsv2rgb((1.0 / weeks) * week, 1, 1))
 
+    for hour in range(0, hours):
+        s = "%d" % (hour + hour_start)
+        tw, th = d.textsize(s, font=font)
+
+        tpos = ((thick + w_hour) * (hour + 1) + thick + int((w_hour - tw) / 2),
+                int((h_week - th) / 2)  + thick);
+        d.text(tpos,
+               s, font=font, fill=(255, 255, 255))
+    
     img.save(os.path.join('out', filename + '.png'))
 
 
@@ -90,28 +105,5 @@ def sungraphy(filename, wall_norm):
 #
 cardinal = ['north', 'east', 'south', 'west']
 for i in range(0, 4):
-    sungraphy('lavagna_' + cardinal[i], wall_norm_start_angle + float(i * 90.0))
+    sungraphy(('lavagna%d_%s' % (i + 1, cardinal[i])), wall_norm_start_angle + float(i * 90.0))
     
-    
-# # evaluate on a 2 degree grid
-# lon = linspace(-180, 180, 181)
-# lat = linspace(-90, 90, 91)
-# LON, LAT = meshgrid(lon,lat)
-# #at the current time
-# now = datetime.utcnow()
-# az,zen = sunpos(now,LAT,LON,0)[:2] #discard RA, dec, H
-# print(az, zen)
-# # #convert zenith to elevation
-# # elev = 90 - zen
-# # #convert azimuth to vectors
-# # u, v = cos((90-az)*pi/180), sin((90-az)*pi/180)
-# # #plot
-# # figure()
-# # imshow(elev,cmap=cm.CMRmap,origin='lower',vmin=-90,vmax=90,extent=(-180,180,-90,90))
-# # s = slice(5,-1,5) # equivalent to 5:-1:5
-# # quiver(lon[s],lat[s],u[s,s],v[s,s])
-# # contour(lon,lat,elev,[0])
-# # cb = colorbar()
-# # cb.set_label('Elevation Angle (deg)')
-# # gca().set_aspect('equal')
-# # xticks(arange(-180,181,45)); yticks(arange(-90,91,45))
