@@ -23,7 +23,7 @@ h_week = 30
 
 thick = 1
 
-# the house 
+# the house
 lat = 44.298409
 lon = 9.369913
 
@@ -37,11 +37,15 @@ def hsv2rgb(h, s, v):
     ret = colorsys.hsv_to_rgb(h * 2.0 / 3.0, s, v)
     return tuple(int(x * 255) for x in ret)
 
+OL_COL = (40, 40, 40)
+BG_COL = (0, 0, 0)
+FG_COL = (255, 255, 255)
+
 # wall_norm: angle from north
 def sungraphy(filename, wall_norm):
     img = Image.new('RGB', ((w_hour + thick) * (hours + 1) + thick,
                             (h_week + thick) * (weeks + 1) + thick),
-                    color = (0, 0, 0))
+                    color = OL_COL)
     d = ImageDraw.Draw(img)
     font = ImageFont.truetype("arial.ttf", 15)
     # d. text((10,10), "Hello World", fill=(255,255,0))
@@ -73,7 +77,7 @@ def sungraphy(filename, wall_norm):
                              (h_week + thick) * (week + 1) + thick,
                              (thick + w_hour) * (hour + 2) - thick,
                              (h_week + thick) * (week + 2) - thick],
-                            fill = (50, 50, 50))
+                            fill = BG_COL)
                 continue
 
             # print (hour + hour_start, week, wall_angle, zen)
@@ -81,22 +85,51 @@ def sungraphy(filename, wall_norm):
                          (h_week + thick) * (week + 1) + thick,
                          (thick + w_hour) * (hour + 2) - thick,
                          (h_week + thick) * (week + 2) - thick],
-                        fill = (50, 50, 50))
+                        fill = BG_COL)
             d.rectangle([(thick + w_hour) * (hour + 1) + int(float(w_hour) * zen / 180.0) + thick,
                          (h_week + thick) * (week + 1) + thick,
                          (thick + w_hour) * (hour + 2)  - int(float(w_hour) * zen / 180.0) - thick,
                          (h_week + thick) * (week + 2) - thick],
                         fill = hsv2rgb((1.0 / 180.0) * (wall_angle + 90.0), 1, 1))
 
+    hour = -1
+    d.rectangle([(thick + w_hour) * (hour + 1) + thick,
+                 (h_week + thick) * 0 + thick,
+                 (thick + w_hour) * (hour + 2) - thick,
+                 (h_week + thick) * 1 - thick],
+                fill = BG_COL)
+
     for hour in range(0, hours):
         s = "%d" % (hour + hour_start)
         tw, th = d.textsize(s, font=font)
 
+        d.rectangle([(thick + w_hour) * (hour + 1) + thick,
+                     (h_week + thick) * 0 + thick,
+                     (thick + w_hour) * (hour + 2) - thick,
+                     (h_week + thick) * 1 - thick],
+                    fill = BG_COL)
+
         tpos = ((thick + w_hour) * (hour + 1) + thick + int((w_hour - tw) / 2),
                 int((h_week - th) / 2)  + thick);
         d.text(tpos,
-               s, font=font, fill=(255, 255, 255))
-    
+               s, font=font, fill=FG_COL)
+
+    for week in range(0, weeks):
+        s = "%d°" % (week + 1)
+        tw, th = d.textsize(s, font=font)
+
+        d.rectangle([(thick + w_hour) * 0 + thick,
+                     (h_week + thick) * (week + 1) + thick,
+                     (thick + w_hour) * 1 - thick,
+                     (h_week + thick) * (week + 2) - thick],
+                    fill = BG_COL)
+
+        tpos = (thick  + int((w_hour - tw) / 2),
+                (h_week + thick) * (week + 1) + thick + int((h_week - th) / 2))
+        d.text(tpos,
+               s, font=font, fill=FG_COL)
+
+
     img.save(os.path.join('out', filename + '.png'))
 
 
@@ -106,4 +139,4 @@ def sungraphy(filename, wall_norm):
 cardinal = ['north', 'east', 'south', 'west']
 for i in range(0, 4):
     sungraphy(('lavagna%d_%s' % (i + 1, cardinal[i])), wall_norm_start_angle + float(i * 90.0))
-    
+
